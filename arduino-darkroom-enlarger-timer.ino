@@ -46,7 +46,7 @@ int time;
 // time_c is for the countdown time, keeping the original time intact for reference
 int time_c;
 
-unsigned long lastSaveTime = 0;
+int lastSaveTime = 0;
 
 unsigned long buttonDelay = 600; // Minimum delay between button presses (in milliseconds)
 unsigned long lastButtonPress = 0; // Store the last time a button was pressed
