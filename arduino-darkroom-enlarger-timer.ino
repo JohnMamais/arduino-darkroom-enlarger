@@ -8,6 +8,7 @@
 
 #include "LedControl.h"
 #include <Wire.h>
+#include <EEPROM.h>
 
 
 #define DEBUG 0
@@ -20,6 +21,9 @@
   #define debugln(x)
 #endif
 
+const TIME_POSITION = 0; // time save position in EEPROM
+const int VALID_FLAG_ADDRESS = 2;    // Validation byte (1 byte)
+const byte VALID_FLAG = 0x55;        // Magic number to know data is valid
 
 const int START_BUTTON = 11;
 const int FOCUS_BUTTON = 12;
@@ -39,10 +43,12 @@ const int CLK = 6;
 // dat, clk, load, num of MAX72xx modules
 LedControl lc=LedControl(DATA_IN, CLK, LOAD, 1);
 
-unsigned int time = 10;
+int time;
 
 // time_c is for the countdown time, keeping the original time intact for reference
-unsigned int time_c;
+int time_c;
+
+int lastSavedTime;
 
 unsigned long buttonDelay = 300; // Minimum delay between button presses (in milliseconds)
 unsigned long lastButtonPress = 0; // Store the last time a button was pressed
@@ -63,7 +69,7 @@ void setup() {
   pinMode(SUB_SEC, INPUT_PULLUP);
   pinMode(ADD_SEC, INPUT_PULLUP);
 
-  
+  loadExposureTime();
   
   // The MAX72XX is in power-saving mode on startup,
   // we have to do a wakeup call
@@ -118,6 +124,7 @@ void loop() {
 
       // Check start button
       if (digitalRead(START_BUTTON) == LOW && time>0) {
+        saveExposureTime();
         // The countdown is started here and anything that needs to be initialized should be put in here
         debounceStart();
         debugln("timer started");
@@ -211,4 +218,38 @@ void stopEnlarger(){
 void toggleEnlarger(){
   // oneliner toggle
   digitalWrite(RELAY_PIN, !digitalRead(RELAY_PIN));
+}
+
+void saveExposureTime() {
+    // Only save if value actually changed
+    if (time != lastSavedTime) {
+        // Save the time value (2 bytes)
+        EEPROM.put(TIME_ADDRESS, time);
+        
+        // Mark as valid data
+        EEPROM.update(VALID_FLAG_ADDRESS, VALID_FLAG);
+        
+        // Remember what we saved
+        lastSavedTime = time;
+        
+        debugln("Saved time to EEPROM: "+String(time));
+    }
+}
+
+void loadExposureTime() {
+    // Check if we have valid saved data
+    if (EEPROM.read(VALID_FLAG_ADDRESS) == VALID_FLAG) {
+        int savedTime;
+        EEPROM.get(TIME_ADDRESS, savedTime);
+        
+        // Basic sanity check (1-9999 seconds = 0-166 minutes)
+        if (savedTime >= 1 && savedTime <= 9999) {
+            time = savedTime;
+            lastSavedTime = time;  // Initialize tracking
+            debugln("Loaded time from EEPROM: "+String(time));
+            return;  // Success!
+        }
+    } else {
+      time = 10;
+    }
 }
