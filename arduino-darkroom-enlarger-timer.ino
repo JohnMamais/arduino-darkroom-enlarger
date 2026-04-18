@@ -94,7 +94,7 @@ void loop() {
   if (countdownRunning) {
     
     // countdown check
-    if (time_c < 1 || time_c > time) { // time_c > time is usefull to account for overflow since time variables are unsigned
+    if (time_c <= 0) { // time_c > time is usefull to account for overflow since time variables are unsigned
       countdownRunning = false; // Stop the countdown when it reaches 0
       
       // turn off enlarger head
