@@ -8,6 +8,7 @@
 
 #include "LedControl.h"
 #include <Wire.h>
+#include <EEPROM.h>
 
 
 #define DEBUG 0
@@ -20,6 +21,7 @@
   #define debugln(x)
 #endif
 
+const int TIME_ADDRESS = 0; // EEPROM address to store the time setting
 
 const int START_BUTTON = 11;
 const int FOCUS_BUTTON = 12;
@@ -39,12 +41,14 @@ const int CLK = 6;
 // dat, clk, load, num of MAX72xx modules
 LedControl lc=LedControl(DATA_IN, CLK, LOAD, 1);
 
-unsigned int time = 10;
+int time;
 
 // time_c is for the countdown time, keeping the original time intact for reference
-unsigned int time_c;
+int time_c;
 
-unsigned long buttonDelay = 300; // Minimum delay between button presses (in milliseconds)
+unsigned long lastSaveTime = 0;
+
+unsigned long buttonDelay = 600; // Minimum delay between button presses (in milliseconds)
 unsigned long lastButtonPress = 0; // Store the last time a button was pressed
 unsigned long currentMillis = 0; // current time
 
@@ -63,8 +67,9 @@ void setup() {
   pinMode(SUB_SEC, INPUT_PULLUP);
   pinMode(ADD_SEC, INPUT_PULLUP);
 
-  
-  
+  //load time from EEPROM
+  loadLastTime();
+
   // The MAX72XX is in power-saving mode on startup,
   // we have to do a wakeup call
   
@@ -88,8 +93,8 @@ void loop() {
   // If countdown is running, update the display every second
   if (countdownRunning) {
     
-    // countdown check
-    if (time_c < 1 || time_c > time) { // time_c > time is usefull to account for overflow since time variables are unsigned
+    // countdown end check
+    if (time_c <= 0) {
       countdownRunning = false; // Stop the countdown when it reaches 0
       
       // turn off enlarger head
@@ -126,6 +131,8 @@ void loop() {
         time_c = time;
         startEnlarger();
         previousMillis = millis(); 
+
+        saveLastTime(); // Save the current time setting to EEPROM
       }
 
       // Check focus button
@@ -211,4 +218,23 @@ void stopEnlarger(){
 void toggleEnlarger(){
   // oneliner toggle
   digitalWrite(RELAY_PIN, !digitalRead(RELAY_PIN));
+}
+
+void saveLastTime() {
+    if (lastSaveTime != time){
+      EEPROM.put(TIME_ADDRESS, time);  // Save current time setting to EEPROM
+      lastSaveTime = time;
+    }
+}
+
+void loadLastTime() {
+    int savedTime;
+    EEPROM.get(TIME_ADDRESS, savedTime);
+    
+    // Validate (1-9999 seconds = 0-166 minutes)
+    if (savedTime >= 1 && savedTime <= 9999) {
+        time = savedTime;
+    } else {
+        time = 10; // Default time if EEPROM value is invalid
+    }
 }
