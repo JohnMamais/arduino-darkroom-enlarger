@@ -7,7 +7,6 @@
 */
 
 #include "LedControl.h"
-#include <Wire.h>
 #include <EEPROM.h>
 
 
@@ -21,7 +20,7 @@
   #define debugln(x)
 #endif
 
-const TIME_POSITION = 0; // time save position in EEPROM
+const byte TIME_ADDRESS = 0; // time save position in EEPROM
 const int VALID_FLAG_ADDRESS = 2;    // Validation byte (1 byte)
 const byte VALID_FLAG = 0x55;        // Magic number to know data is valid
 
